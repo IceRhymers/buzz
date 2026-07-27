@@ -31,6 +31,12 @@ export function WhereToRunSection({
       setProbeError(null);
       return;
     }
+    // Once probed, don't re-probe: every keystroke in ProviderConfigFields
+    // produces a new `draft`, and re-running the probe would clobber the
+    // user's edits back to schema defaults. Switching providers resets the
+    // draft to emptyWhereToRunDraft (probedProvider: null), so a fresh probe
+    // still fires on provider change.
+    if (draft.probedProvider) return;
     let cancelled = false;
     setProbeError(null);
     void probeBackendProvider(selectedBackendProvider.binaryPath)
@@ -50,7 +56,9 @@ export function WhereToRunSection({
         onDraftChange({
           ...draft,
           probedProvider: result,
-          providerConfig: defaults,
+          // Seed defaults without overwriting any values the user already
+          // typed, so a late-resolving probe can never erase input.
+          providerConfig: { ...defaults, ...draft.providerConfig },
         });
       })
       .catch((error: unknown) => {
